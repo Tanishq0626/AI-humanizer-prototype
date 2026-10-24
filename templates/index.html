@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Chat Analyzer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-1: #0A0E1A;
+    --bg-2: #0F1730;
+    --panel: rgba(255,255,255,0.045);
+    --panel-solid: #12192E;
+    --paper: #FFFFFF;
+    --paper-dim: #B9C2DC;
+    --line: rgba(255,255,255,0.14);
+    --line-bright: rgba(255,255,255,0.32);
+    --ai: #FF6B8F;
+    --ai-glow: #FF6B8Faa;
+    --human: #3DE8C0;
+    --human-glow: #3DE8C0aa;
+    --accent: #5B9DFF;
+    --accent-2: #6FE3D6;
+    --pending: #FFC562;
+    --glow-1: #3A6CFF33;
+    --glow-2: #FF6B8F22;
+    --glow-3: #3DE8C01a;
+  }
+
+  html[data-theme="light"] {
+    --bg-1: #F3F6FC;
+    --bg-2: #E7EEFC;
+    --panel: rgba(20,30,60,0.04);
+    --panel-solid: #FFFFFF;
+    --paper: #10162B;
+    --paper-dim: #4B5573;
+    --line: rgba(20,30,60,0.14);
+    --line-bright: rgba(20,30,60,0.30);
+    --ai: #D6335E;
+    --ai-glow: #D6335E55;
+    --human: #0F9A80;
+    --human-glow: #0F9A8055;
+    --accent: #2F6FED;
+    --accent-2: #0FA3A3;
+    --pending: #B4780C;
+    --glow-1: #2F6FED22;
+    --glow-2: #D6335E14;
+    --glow-3: #0F9A8014;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    color: var(--paper);
+    font-family: 'IBM Plex Mono', monospace;
+    display: flex;
+    justify-content: center;
+    padding: 72px 20px 100px;
+    background:
+      radial-gradient(circle at 15% -10%, var(--glow-1), transparent 45%),
+      radial-gradient(circle at 110% 20%, var(--glow-2), transparent 40%),
+      radial-gradient(circle at 50% 100%, var(--glow-3), transparent 45%),
+      linear-gradient(180deg, var(--bg-1), var(--bg-2) 60%, var(--bg-1));
+    background-attachment: fixed;
+    transition: background 0.3s ease, color 0.3s ease;
+  }
+
+  main {
+    width: 100%;
+    max-width: 720px;
+    position: relative;
+  }
+
+  /* --- Theme toggle --- */
+
+  #theme-toggle {
+    position: absolute;
+    top: -44px;
+    right: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--panel-solid);
+    border: 1px solid var(--line);
+    border-radius: 100px;
+    padding: 5px;
+    cursor: pointer;
+  }
+
+  #theme-toggle button {
+    border: none;
+    background: none;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 16px;
+    color: var(--paper-dim);
+    transition: background 0.2s ease, color 0.2s ease;
+  }
+
+  #theme-toggle button.active {
+    background: var(--accent);
+    color: #0A0E1A;
+  }
+
+  header {
+    margin-bottom: 48px;
+  }
+
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 14%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+    padding: 6px 14px;
+    border-radius: 100px;
+    margin-bottom: 22px;
+  }
+
+  .eyebrow .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--human);
+    box-shadow: 0 0 8px var(--human-glow);
+  }
+
+  h1 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: clamp(42px, 7vw, 68px);
+    line-height: 1.02;
+    letter-spacing: -0.02em;
+    margin: 0 0 18px;
+    background: linear-gradient(100deg, var(--paper) 20%, var(--accent-2) 55%, var(--accent) 85%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  header p {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 20px;
+    font-weight: 400;
+    color: var(--paper-dim);
+    line-height: 1.65;
+    margin: 0;
+    max-width: 50ch;
+  }
+
+  .case-id {
+    font-size: 13px;
+    color: var(--paper-dim);
+    letter-spacing: 0.05em;
+    margin-top: 24px;
+    opacity: 0.85;
+  }
+
+  .field-label {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--paper);
+    margin-bottom: 12px;
+  }
+
+  .intake-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    align-items: start;
+  }
+
+  @media (max-width: 620px) {
+    .intake-grid { grid-template-columns: 1fr; }
+    #theme-toggle { top: -56px; }
+  }
+
+  /* --- Intake zone --- */
+
+  #dropzone {
+    border: 2px dashed var(--line-bright);
+    border-radius: 20px;
+    padding: 40px 22px;
+    min-height: 220px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    cursor: text;
+    background: var(--panel);
+    backdrop-filter: blur(6px);
+    transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+    outline: none;
+  }
+
+  #dropzone:hover {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 20%, transparent), 0 20px 60px -20px color-mix(in srgb, var(--accent) 35%, transparent);
+  }
+
+  #dropzone:focus {
+    border-color: var(--accent);
+    border-style: solid;
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 18%, transparent);
+  }
+
+  #dropzone.has-image {
+    border-style: solid;
+    border-color: var(--human);
+    padding: 20px;
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--human) 12%, transparent);
+  }
+
+  #dropzone .hint {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--paper);
+    line-height: 1.7;
+  }
+
+  #dropzone .hint .sub {
+    display: block;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 14px;
+    color: var(--paper-dim);
+    font-weight: 400;
+    margin-top: 8px;
+  }
+
+  #dropzone .hint kbd {
+    font-family: 'IBM Plex Mono', monospace;
+    background: color-mix(in srgb, var(--paper) 10%, transparent);
+    border: 1px solid var(--line-bright);
+    border-radius: 5px;
+    padding: 3px 9px;
+    color: var(--paper);
+    font-size: 14px;
+  }
+
+  #preview-wrap {
+    display: none;
+    margin-top: 4px;
+  }
+
+  #preview-wrap.visible { display: block; }
+
+  #preview {
+    max-width: 100%;
+    max-height: 260px;
+    border-radius: 12px;
+    display: block;
+    margin: 0 auto;
+    box-shadow: 0 20px 50px -20px rgba(0,0,0,0.4);
+  }
+
+  #clear-btn, #clear-text-btn {
+    background: none;
+    border: none;
+    color: var(--paper-dim);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 14px;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    cursor: pointer;
+    margin-top: 10px;
+    padding: 0;
+  }
+
+  #clear-btn:hover, #clear-text-btn:hover { color: var(--ai); }
+
+  /* --- Text paste box --- */
+
+  #textzone {
+    border: 2px dashed var(--line-bright);
+    border-radius: 20px;
+    padding: 20px;
+    min-height: 220px;
+    background: var(--panel);
+    backdrop-filter: blur(6px);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  #textzone:focus-within {
+    border-color: var(--accent);
+    border-style: solid;
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 18%, transparent);
+  }
+
+  #textzone.has-text {
+    border-style: solid;
+    border-color: var(--human);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--human) 12%, transparent);
+  }
+
+  #text-input {
+    width: 100%;
+    height: 176px;
+    resize: vertical;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--paper);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 15px;
+    line-height: 1.7;
+  }
+
+  #text-input::placeholder {
+    color: var(--paper-dim);
+    opacity: 0.8;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 20px;
+    font-weight: 600;
+  }
+
+  /* --- Controls --- */
+
+  .controls {
+    display: flex;
+    align-items: center;
+    gap: 22px;
+    margin-top: 32px;
+    flex-wrap: wrap;
+  }
+
+  #analyze-btn {
+    background: linear-gradient(100deg, var(--accent), var(--accent-2));
+    color: #0A0E1A;
+    border: none;
+    border-radius: 12px;
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 16px;
+    letter-spacing: -0.01em;
+    padding: 16px 30px;
+    cursor: pointer;
+    box-shadow: 0 12px 30px -10px color-mix(in srgb, var(--accent) 60%, transparent);
+    transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+  }
+
+  #analyze-btn:disabled {
+    opacity: 0.3;
+    box-shadow: none;
+    cursor: not-allowed;
+  }
+
+  #analyze-btn:not(:disabled):hover {
+    transform: translateY(-2px);
+    box-shadow: 0 16px 36px -10px color-mix(in srgb, var(--accent) 75%, transparent);
+  }
+
+  #analyze-btn:not(:disabled):active { transform: translateY(0); }
+
+  .demo-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--paper-dim);
+  }
+
+  .demo-toggle input {
+    accent-color: var(--pending);
+    width: 15px;
+    height: 15px;
+  }
+
+  #status-line {
+    font-size: 14px;
+    color: var(--paper-dim);
+    margin-top: 18px;
+    min-height: 18px;
+    font-weight: 500;
+  }
+
+  #status-line.error { color: var(--ai); }
+
+  /* --- Results --- */
+
+  #results {
+    display: none;
+    margin-top: 56px;
+    padding-top: 40px;
+    border-top: 1px solid var(--line);
+  }
+
+  #results.visible {
+    display: block;
+    animation: rise 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .verdict-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 16px;
+  }
+
+  .verdict-label {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    color: var(--paper-dim);
+  }
+
+  .verdict-pct {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: clamp(30px, 9vw, 44px);
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+
+  .verdict-pct.ai { color: var(--ai); text-shadow: 0 0 24px var(--ai-glow); }
+  .verdict-pct.human { color: var(--human); text-shadow: 0 0 24px var(--human-glow); }
+
+  .splitbar {
+    height: 16px;
+    width: 100%;
+    background: color-mix(in srgb, var(--paper) 8%, transparent);
+    border: 1px solid var(--line);
+    border-radius: 100px;
+    overflow: hidden;
+    display: flex;
+  }
+
+  .splitbar .seg-ai,
+  .splitbar .seg-human {
+    height: 100%;
+    width: 0%;
+    transition: width 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .splitbar .seg-ai { background: linear-gradient(90deg, var(--ai), #FF9AB4); }
+  .splitbar .seg-human { background: linear-gradient(90deg, var(--human), #7DF2D6); }
+
+  .reasoning-block {
+    margin-top: 40px;
+  }
+
+  .reasoning-label {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    color: var(--paper-dim);
+    margin-bottom: 12px;
+  }
+
+  #reasoning-log {
+    background: var(--panel);
+    backdrop-filter: blur(6px);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 26px 28px;
+    font-size: 16px;
+    line-height: 1.85;
+    color: var(--paper);
+    white-space: pre-wrap;
+    max-height: 300px;
+    overflow-y: auto;
+  }
+
+  .sides-note {
+    display: none;
+    font-size: 13px;
+    color: var(--paper-dim);
+    margin: 14px 0 0;
+    padding: 10px 14px;
+    border-radius: 10px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+  }
+
+  .sides-note.warn { color: var(--ai); border-color: color-mix(in srgb, var(--ai) 40%, transparent); }
+
+  .extracted-block {
+    margin-top: 32px;
+  }
+
+  .extracted-block .reasoning-label { margin-bottom: 12px; }
+
+  #extracted-text {
+    background: var(--panel);
+    backdrop-filter: blur(6px);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 20px 22px;
+    font-size: 15px;
+    line-height: 1.7;
+    color: var(--paper);
+    white-space: pre-wrap;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .splitbar .seg-ai,
+    .splitbar .seg-human {
+      transition: none;
+    }
+  }
+</style>
+</head>
+<body>
+
+<main>
+  <div id="theme-toggle" role="group" aria-label="Theme switch">
+    <button id="dark-btn" class="active" aria-label="Dark mode" title="Dark mode">&#127769;</button>
+    <button id="light-btn" aria-label="Light mode" title="Light mode">&#9728;&#65039;</button>
+  </div>
+
+  <header>
+    <div class="eyebrow"><span class="dot"></span> Live detection engine</div>
+    <h1>AI Chat Analyzer</h1>
+    <p>Upload a screenshot of a conversation and get an estimated AI vs. human likelihood, with reasoning — not a verdict of fact.</p>
+
+  </header>
+
+  <div class="intake-grid">
+    <div>
+      <div class="field-label">Screenshot</div>
+      <div id="dropzone" tabindex="0" aria-label="Choose or paste a chat screenshot">
+        <input type="file" id="file-input" accept="image/*" style="display:none">
+        <div class="hint" id="hint">Tap to choose a screenshot<span class="sub">or paste it &mdash; <kbd>Ctrl</kbd>+<kbd>V</kbd> &middot; <kbd>Cmd</kbd>+<kbd>V</kbd> on Mac</span></div>
+        <div id="preview-wrap">
+          <img id="preview" alt="Pasted chat screenshot">
+        </div>
+      </div>
+      <button id="clear-btn" style="display:none;">Clear image</button>
+    </div>
+
+    <div>
+      <div class="field-label">Or paste text</div>
+      <div id="textzone">
+        <textarea id="text-input" placeholder="Paste raw chat text here&hellip;"></textarea>
+      </div>
+      <button id="clear-text-btn" style="display:none;">Clear text</button>
+    </div>
+  </div>
+
+  <div class="controls">
+    
+  </div>
+    <div class="controls">
+    <button id="analyze-btn" disabled>Analyze chat</button>
+  </div>
+  <div id="status-line"></div>
+
+  <section id="results">
+    <div class="verdict-row">
+      <span class="verdict-label">AI-GENERATED</span>
+      <span class="verdict-pct ai" id="pct-ai">&mdash;</span>
+    </div>
+    <div class="splitbar">
+      <div class="seg-ai" id="seg-ai"></div>
+      <div class="seg-human" id="seg-human"></div>
+    </div>
+    <div class="verdict-row" style="margin-top: 8px; margin-bottom: 0;">
+      <span class="verdict-label">HUMAN-WRITTEN</span>
+      <span class="verdict-pct human" id="pct-human">&mdash;</span>
+    </div>
+    <p class="sides-note" id="sides-note"></p>
+
+    <div class="extracted-block">
+      <div class="reasoning-label">EXTRACTED MESSAGE</div>
+      <div id="extracted-text">&mdash;</div>
+    </div>
+
+    <div class="reasoning-block">
+      <div class="reasoning-label">REASONING</div>
+      <div id="reasoning-log">&mdash;</div>
+    </div>
+  </section>
+</main>
+
+<script>
+  // ---------------------------------------------------------------------
+  // Backend contract (matches the real Flask app):
+  //
+  //   POST /upload
+  //   body: FormData with a file field named "screenshot"
+  //   (text-only analysis is not supported by the backend yet)
+  //
+  //   Actual JSON response:
+  //   {
+  //     "ai_likelihood": 72,             // 0-100
+  //     "extracted_text": "...",
+  //     "reasoning": ["Gemini: ...", "Pattern check: ..."],   // ARRAY, not a string
+  //     "confidence": "medium",
+  //     "chat_sides_detected": "both" | "other_only" | "unclear" | "ocr_mixed",
+  //     "source": "combined" | "offline_fallback",
+  //     "error": "..."                    // present only on failure
+  //   }
+  //
+  // The Gemini API key stays server-side. This page never calls Gemini directly.
+  // ---------------------------------------------------------------------
+
+  const ANALYZE_ENDPOINT = "/upload";
+const TEXT_ENDPOINT = "/analyze-text";
+  const dropzone = document.getElementById("dropzone");
+  const fileInput = document.getElementById("file-input");
+  const hint = document.getElementById("hint");
+  const previewWrap = document.getElementById("preview-wrap");
+  const preview = document.getElementById("preview");
+  const clearBtn = document.getElementById("clear-btn");
+  const textzone = document.getElementById("textzone");
+  const textInput = document.getElementById("text-input");
+  const clearTextBtn = document.getElementById("clear-text-btn");
+  const analyzeBtn = document.getElementById("analyze-btn");
+ 
+  const statusLine = document.getElementById("status-line");
+  const results = document.getElementById("results");
+  const pctAi = document.getElementById("pct-ai");
+  const pctHuman = document.getElementById("pct-human");
+  const segAi = document.getElementById("seg-ai");
+  const segHuman = document.getElementById("seg-human");
+  const reasoningLog = document.getElementById("reasoning-log");
+  const extractedText = document.getElementById("extracted-text");
+  const sidesNote = document.getElementById("sides-note");
+
+  const darkBtn = document.getElementById("dark-btn");
+  const lightBtn = document.getElementById("light-btn");
+
+  let currentBlob = null;
+
+  // --- Theme switching ---
+  function applyTheme(theme) {
+    document.documentElement.setAttribute("data-theme", theme);
+    darkBtn.classList.toggle("active", theme === "dark");
+    lightBtn.classList.toggle("active", theme === "light");
+    try { localStorage.setItem("ai-chat-analyzer-theme", theme); } catch (e) {}
+  }
+
+  (function initTheme() {
+    let saved = null;
+    try { saved = localStorage.getItem("ai-chat-analyzer-theme"); } catch (e) {}
+    if (saved === "light" || saved === "dark") {
+      applyTheme(saved);
+    } else {
+      const prefersLight = window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches;
+      applyTheme(prefersLight ? "light" : "dark");
+    }
+  })();
+
+  darkBtn.addEventListener("click", () => applyTheme("dark"));
+  lightBtn.addEventListener("click", () => applyTheme("light"));
+
+  dropzone.addEventListener("paste", (e) => {
+    const items = e.clipboardData && e.clipboardData.items;
+    if (!items) return;
+
+    for (const item of items) {
+      if (item.type.startsWith("image/")) {
+        const blob = item.getAsFile();
+        loadImage(blob);
+        e.preventDefault();
+        return;
+      }
+    }
+    setStatus("Clipboard didn't contain an image. Copy a screenshot first, then paste.", true);
+  });
+
+  // Tap/click opens the native file picker - this is what makes it work on phones
+  dropzone.addEventListener("click", () => fileInput.click());
+  dropzone.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      fileInput.click();
+    }
+  });
+
+  fileInput.addEventListener("change", () => {
+    if (fileInput.files && fileInput.files[0]) {
+      loadImage(fileInput.files[0]);
+    }
+  });
+
+  // Drag-and-drop for desktop
+  ["dragover", "dragleave", "drop"].forEach((evt) => {
+    dropzone.addEventListener(evt, (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (evt === "drop" && e.dataTransfer.files && e.dataTransfer.files[0]) {
+        loadImage(e.dataTransfer.files[0]);
+      }
+    });
+  });
+
+  function loadImage(blob) {
+    currentBlob = blob;
+    const url = URL.createObjectURL(blob);
+    preview.src = url;
+    hint.style.display = "none";
+    previewWrap.classList.add("visible");
+    dropzone.classList.add("has-image");
+    clearBtn.style.display = "inline-block";
+    // Using a screenshot clears any pasted text, so only one source is sent.
+    textInput.value = "";
+    textzone.classList.remove("has-text");
+    clearTextBtn.style.display = "none";
+    updateAnalyzeState();
+    setStatus("");
+    results.classList.remove("visible");
+  }
+
+  clearBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    currentBlob = null;
+    fileInput.value = "";
+    preview.src = "";
+    hint.style.display = "block";
+    previewWrap.classList.remove("visible");
+    dropzone.classList.remove("has-image");
+    clearBtn.style.display = "none";
+    updateAnalyzeState();
+    results.classList.remove("visible");
+    setStatus("");
+    dropzone.focus();
+  });
+
+  textInput.addEventListener("input", () => {
+    const hasText = textInput.value.trim().length > 0;
+    textzone.classList.toggle("has-text", hasText);
+    clearTextBtn.style.display = hasText ? "inline-block" : "none";
+
+    if (hasText && currentBlob) {
+      // Typing text clears any pasted screenshot, so only one source is sent.
+      currentBlob = null;
+      preview.src = "";
+      hint.style.display = "block";
+      previewWrap.classList.remove("visible");
+      dropzone.classList.remove("has-image");
+      clearBtn.style.display = "none";
+    }
+    updateAnalyzeState();
+    results.classList.remove("visible");
+    setStatus("");
+  });
+
+  clearTextBtn.addEventListener("click", () => {
+    textInput.value = "";
+    textzone.classList.remove("has-text");
+    clearTextBtn.style.display = "none";
+    updateAnalyzeState();
+    results.classList.remove("visible");
+    setStatus("");
+    textInput.focus();
+  });
+
+  function updateAnalyzeState() {
+    const hasText = textInput.value.trim().length > 0;
+    analyzeBtn.disabled = !(currentBlob || hasText);
+  }
+
+    analyzeBtn.addEventListener("click", async () => {
+    const text = textInput.value.trim();
+    if (!currentBlob && !text) return;
+
+    analyzeBtn.disabled = true;
+    setStatus("Analyzing…");
+    results.classList.remove("visible");
+
+    try {
+      let data;
+      if (currentBlob) {
+        data = await runRealAnalysis(currentBlob);
+      } else {
+        data = await runTextAnalysis(text);
+      }
+      renderResults(data);
+      setStatus("");
+    } catch (err) {
+      setStatus("Analysis failed: " + err.message, true);
+    } finally {
+      updateAnalyzeState();
+    }
+  });
+
+  async function runTextAnalysis(text) {
+    const res = await fetch(TEXT_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text })
+    });
+
+    const data = await res.json();
+
+    if (data.error) {
+      throw new Error(data.error);
+    }
+    if (!res.ok || typeof data.ai_likelihood !== "number") {
+      throw new Error(`unexpected response from ${TEXT_ENDPOINT}`);
+    }
+    return data;
+  }
+
+  async function runRealAnalysis(imageBlob) {
+    const formData = new FormData();
+    formData.append("screenshot", imageBlob, "chat-screenshot.png");
+
+    const res = await fetch(ANALYZE_ENDPOINT, {
+      method: "POST",
+      body: formData
+    });
+
+    const data = await res.json();
+
+    if (data.error) {
+      throw new Error(data.error);
+    }
+    if (!res.ok || typeof data.ai_likelihood !== "number") {
+      throw new Error(`unexpected response from ${ANALYZE_ENDPOINT}`);
+    }
+    return data;
+  }
+
+  function runDemoAnalysis() {
+    // Simulated response so the UI can be reviewed before the backend
+    // is connected. Matches the real /upload response shape.
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        const ai = Math.floor(40 + Math.random() * 55);
+        resolve({
+          source: "combined",
+          ai_likelihood: ai,
+          extracted_text: "[DEMO MODE] Hey, I completely understand your perspective on this matter.",
+          chat_sides_detected: "both",
+          reasoning: [
+            "[DEMO MODE — not a real analysis]",
+            "Gemini: Sentence lengths cluster tightly with little variance",
+            "Gemini: Contains formal transitional phrasing (\"I completely understand\")",
+            "Pattern check: no contractions used, leans AI-like",
+            "Pattern check: formal, complete punctuation, leans AI-like"
+          ]
+        });
+      }, 900);
+    });
+  }
+
+  const SIDES_COPY = {
+    both: { text: "Both sides of the conversation were visible — analyzing only the other person's message.", warn: false },
+    other_only: { text: "Only the other person's messages were visible in this screenshot.", warn: false },
+    unclear: { text: "Could not clearly tell the two sides apart — try a screenshot that also shows a bit of your own reply.", warn: true },
+    ocr_mixed: { text: "Offline mode — read all visible text without separating sides. Crop to just the message you want checked for best accuracy.", warn: true }
+  };
+
+  function renderResults(data) {
+    const ai = clamp(Math.round(data.ai_likelihood), 0, 100);
+    const human = clamp(100 - ai, 0, 100);
+
+    pctAi.textContent = ai + "%";
+    pctHuman.textContent = human + "%";
+
+    const reasoningLines = Array.isArray(data.reasoning) && data.reasoning.length
+      ? data.reasoning.map((r) => "• " + r).join("\n")
+      : "No reasoning returned.";
+    reasoningLog.textContent = reasoningLines;
+
+    extractedText.textContent = data.extracted_text && data.extracted_text.trim()
+      ? data.extracted_text
+      : "No message text extracted.";
+
+    const sidesKey = data.source === "offline_fallback" ? "ocr_mixed" : data.chat_sides_detected;
+    const sidesInfo = SIDES_COPY[sidesKey];
+    if (sidesInfo) {
+      sidesNote.textContent = sidesInfo.text;
+      sidesNote.classList.toggle("warn", sidesInfo.warn);
+      sidesNote.style.display = "block";
+    } else {
+      sidesNote.style.display = "none";
+    }
+
+    results.classList.add("visible");
+
+    // reset then animate
+    segAi.style.width = "0%";
+    segHuman.style.width = "0%";
+    requestAnimationFrame(() => {
+      segAi.style.width = ai + "%";
+      segHuman.style.width = human + "%";
+    });
+  }
+
+  function setStatus(msg, isError = false) {
+    statusLine.textContent = msg;
+    statusLine.classList.toggle("error", !!isError);
+  }
+
+  function clamp(n, min, max) {
+    return Math.max(min, Math.min(max, n));
+  }
+</script>
+
+</body>
+</html>
